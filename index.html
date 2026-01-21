@@ -7,23 +7,7 @@
 <style>
   html,body{margin:0;height:100%;background:#0b0f14;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
   canvas{display:block;width:100vw;height:100vh;touch-action:manipulation;image-rendering:pixelated;}
-body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
-  /* ===== Monetização UI ===== */
-  .ad-slot{
-    position:fixed; left:0; right:0;
-    display:none; justify-content:center; align-items:center;
-    background:rgba(0,0,0,.35);
-    padding:6px 8px;
-    z-index:20;
-  }
-  #adTop{ top:0; }
-  #adBottom{ bottom:0; }
-  .ad-placeholder{
-    color:#f7f3e8; font-size:12px; opacity:.75;
-    border:1px dashed rgba(247,243,232,.35);
-    padding:8px 12px; border-radius:10px;
-    backdrop-filter: blur(2px);
-  }
+body{}
   .support-btn{
     position:fixed;
     right:10px; bottom:62px;
@@ -151,9 +135,7 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
   </div>
 
   <!-- MONETIZAÇÃO: containers de anúncio (visíveis quando hospedado em um site) -->
-  <div id="adTop" class="ad-slot" aria-label="Anúncio topo">
-    <div class="ad-placeholder">Espaço de anúncio (Topo)</div>
-  </div>
+</div>
 
 <canvas id="c"></canvas>
 <script>
@@ -183,6 +165,7 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
     const pay=document.getElementById('vipPay');
     const code=document.getElementById('vipCode');
     const msg=document.getElementById('vipMsg');
+    const vipErr = msg;
     const unlock=document.getElementById('vipUnlock');
     const close=document.getElementById('vipClose');
     if(!gate) return;
@@ -209,7 +192,10 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
       if(entered && codes.includes(entered)){
         try{ localStorage.setItem(VIP_STORAGE_KEY, entered); }catch(e){}
         if(vipOverlay){ vipOverlay.remove(); }
-        startGame();
+        try{ audio()?.resume?.(); }catch(_){ }
+        sfx.start();
+        bgm.start();
+        resetRun();
       }else{
         if(vipErr){
           vipErr.textContent = 'Codigo invalido. Confira e tente novamente.';
@@ -246,39 +232,28 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
   }
   function loadAdSenseOnce(){
     if(!canLoadAds()) return;
-    if(document.querySelector('script[data-adsbygoogle]')) return;
+    if(document.querySelector('script[data-ads_removido]')) return;
     const s=document.createElement('script');
     s.async=true;
-    s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+encodeURIComponent(ADSENSE_CLIENT);
+    s.src='https://pagead2.googlesyndication.com/pagead/js/ads_removido.js?client='+encodeURIComponent(ADSENSE_CLIENT);
     s.crossOrigin='anonymous';
-    s.dataset.adsbygoogle='1';
+    s.dataset.ads_removido='1';
     document.head.appendChild(s);
   }
   function mountAds(){
     // Monta banners somente quando client/slots foram preenchidos.
     if(!canLoadAds()) return;
     loadAdSenseOnce();
-    if(ADSENSE_SLOT_TOP && elAdTop && !elAdTop.querySelector('ins.adsbygoogle')){
-      elAdTop.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_TOP+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
-      try{ (adsbygoogle=window.adsbygoogle||[]).push({}); }catch(_){ }
+    if(ADSENSE_SLOT_TOP && elAdTop && !elAdTop.querySelector('ins.ads_removido')){
+      elAdTop.innerHTML = '<ins class="ads_removido" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_TOP+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+      /* ads removido */
     }
-    if(ADSENSE_SLOT_BOTTOM && elAdBottom && !elAdBottom.querySelector('ins.adsbygoogle')){
-      elAdBottom.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_BOTTOM+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
-      try{ (adsbygoogle=window.adsbygoogle||[]).push({}); }catch(_){ }
+    if(ADSENSE_SLOT_BOTTOM && elAdBottom && !elAdBottom.querySelector('ins.ads_removido')){
+      elAdBottom.innerHTML = '<ins class="ads_removido" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_BOTTOM+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+      /* ads removido */
     }
   }
-  function setMonetizationUI(mode){
-    const show = (mode==='menu' || mode==='gameover');
-    // Espaço seguro para não ficar por baixo do banner
-    document.body.style.setProperty('--adSafeTop', show ? '52px' : '0px');
-    document.body.style.setProperty('--adSafeBottom', show ? '62px' : '0px');
-
-    // mode: 'off' | 'menu' | 'gameover'
-    if(elAdTop) elAdTop.style.display = (mode==='menu' || mode==='gameover') ? 'flex' : 'none';
-    if(elAdBottom) elAdBottom.style.display = (mode==='menu' || mode==='gameover') ? 'flex' : 'none';
-    if(elSupport) elSupport.style.display = (mode==='menu' || mode==='gameover') ? 'block' : 'none';
-    if(mode!=='off') mountAds();
-  }
+  function setMonetizationUI(mode){ try{document.body.style.setProperty('--adSafeTop','0px');document.body.style.setProperty('--adSafeBottom','0px');}catch(_){ } }
 
 
   // ===== Canvas / Scale =====
@@ -1511,9 +1486,7 @@ ${dailyDone ? "Desafio do dia: concluído 🏅" : "Desafio do dia: ainda dá �
 
 })();
 </script>
-  <div id="adBottom" class="ad-slot" aria-label="Anúncio rodapé">
-    <div class="ad-placeholder">Espaço de anúncio (Rodapé)</div>
-  </div>
+</div>
 
   <!-- Apoio / PIX (troque o link abaixo pelo seu Linktree/WhatsApp/PIX) -->
   <a id="supportBtn" class="support-btn" href="#" target="_blank" rel="noopener">APOIAR (PIX)</a>
