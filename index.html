@@ -139,6 +139,17 @@ body{}
 
 <canvas id="c"></canvas>
 <script>
+
+  // ===== Helpers =====
+  // Random element helper used across combat/dialogue.
+  function pick(arr){
+    try{
+      if(!Array.isArray(arr) || arr.length===0) return '';
+      return arr[Math.floor(Math.random()*arr.length)];
+    }catch(e){
+      return '';
+    }
+  }
 (()=>{
   'use strict';
 
@@ -191,11 +202,21 @@ body{}
 
       if(entered && codes.includes(entered)){
         vipGrant(entered);
-        gate.style.display='none';
-        try{ audio()?.resume?.(); }catch(_){ }
-        sfx.start();
-        bgm.start();
-        resetRun();
+        if(vipErr){
+          vipErr.textContent = 'PARABENS PELO INVESTIMENTO!';
+          vipErr.style.display = 'block';
+          vipErr.style.color = '#7CFF9B';
+        }
+        if(unlock) unlock.disabled = true;
+        if(code) code.disabled = true;
+
+        setTimeout(()=>{
+          gate.style.display='none';
+          try{ audio()?.resume?.(); }catch(_){ }
+          sfx.start();
+          bgm.start();
+          resetRun();
+        }, 900);
       }else{
         if(vipErr){
           vipErr.textContent = 'Codigo invalido. Confira e tente novamente.';
