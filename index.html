@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Carteira Base — Batalha 8-bit (v2)</title>
+<meta name="description" content="Jogo 8-bit da Carteira Base: batalhas contra vilões das gastanças, com humor e educação financeira."/>
+<meta property="og:title" content="Carteira Base — Batalha 8-bit"/>
+<meta property="og:description" content="Batalhas 8-bit contra vilões do consumo. Jogue no navegador!"/>
+<meta property="og:type" content="website"/>
+
+<style>
+  html,body{margin:0;height:100%;background:#0b0f14;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+  canvas{display:block;width:100vw;height:100vh;touch-action:manipulation;image-rendering:pixelated;}
+body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
+  /* ===== Monetização UI ===== */
+  .ad-slot{
+    position:fixed; left:0; right:0;
+    display:none; justify-content:center; align-items:center;
+    background:rgba(0,0,0,.35);
+    padding:6px 8px;
+    z-index:20;
+  }
+  #adTop{ top:0; }
+  #adBottom{ bottom:0; }
+  .ad-placeholder{
+    color:#f7f3e8; font-size:12px; opacity:.75;
+    border:1px dashed rgba(247,243,232,.35);
+    padding:8px 12px; border-radius:10px;
+    backdrop-filter: blur(2px);
+  }
+  .support-btn{
+    position:fixed;
+    right:10px; bottom:62px;
+    z-index:30;
+    display:none;
+    text-decoration:none;
+    background:rgba(46,156,91,.92);
+    color:#0b0f14;
+    font-weight:800;
+    padding:10px 12px;
+    border-radius:14px;
+    box-shadow:0 10px 25px rgba(0,0,0,.35);
+    letter-spacing:0.5px;
+  }
+  .support-btn:active{ transform: translateY(1px); }
+
+
+#siteFooter{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);font-size:12px;color:#f7f3e8;text-align:center;padding:6px 8px;}
+#siteFooter a{color:#f7f3e8;text-decoration:none;opacity:.9;}
+#siteFooter a:hover{opacity:1;text-decoration:underline;}
+</style>
+</head>
+<body>
+  <!-- MONETIZAÇÃO: containers de anúncio (visíveis quando hospedado em um site) -->
+  <div id="adTop" class="ad-slot" aria-label="Anúncio topo">
+    <div class="ad-placeholder">Espaço de anúncio (Topo)</div>
+  </div>
+
+<canvas id="c"></canvas>
+<div id="siteFooter">
+  <a href="sobre.html">Sobre</a> ·
+  <a href="privacy.html">Privacidade</a> ·
+  <a href="terms.html">Termos</a> ·
+  <a href="contato.html">Contato</a>
+</div>
+
+<script>
+(()=>{
+  'use strict';
+
+  // ===== Monetização (AdSense / Apoio) =====
+  // 1) Para AdSense funcionar: hospede este arquivo em um site (https) e troque o client abaixo.
+  // 2) Para botão PIX: troque SUPPORT_URL para seu Linktree/WhatsApp/PIX.
+  const SUPPORT_URL = 'https://seu-link-aqui.exemplo';
+  const ADSENSE_CLIENT = ''; // ex: 'ca-pub-1234567890123456' (deixe vazio para desativar)
+  const ADSENSE_SLOT_TOP = ''; // ex: '1234567890'
+  const ADSENSE_SLOT_BOTTOM = ''; // ex: '0987654321'
+
+  const elAdTop = document.getElementById('adTop');
+  const elAdBottom = document.getElementById('adBottom');
+  const elSupport = document.getElementById('supportBtn');
+  if(elSupport){ elSupport.href = SUPPORT_URL; }
+
+  function canLoadAds(){
+    return !!ADSENSE_CLIENT && (location.protocol==='https:' || location.protocol==='http:');
+  }
+  function loadAdSenseOnce(){
+    if(!canLoadAds()) return;
+    if(document.querySelector('script[data-adsbygoogle]')) return;
+    const s=document.createElement('script');
+    s.async=true;
+    s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+encodeURIComponent(ADSENSE_CLIENT);
+    s.crossOrigin='anonymous';
+    s.dataset.adsbygoogle='1';
+    document.head.appendChild(s);
+  }
+  function mountAds(){
+    // Monta banners somente quando client/slots foram preenchidos.
+    if(!canLoadAds()) return;
+    loadAdSenseOnce();
+    if(ADSENSE_SLOT_TOP && elAdTop && !elAdTop.querySelector('ins.adsbygoogle')){
+      elAdTop.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_TOP+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+      try{ (adsbygoogle=window.adsbygoogle||[]).push({}); }catch(_){ }
+    }
+    if(ADSENSE_SLOT_BOTTOM && elAdBottom && !elAdBottom.querySelector('ins.adsbygoogle')){
+      elAdBottom.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="'+ADSENSE_CLIENT+'" data-ad-slot="'+ADSENSE_SLOT_BOTTOM+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+      try{ (adsbygoogle=window.adsbygoogle||[]).push({}); }catch(_){ }
+    }
+  }
+  function setMonetizationUI(mode){
+    const show = (mode==='menu' || mode==='gameover');
+    // Espaço seguro para não ficar por baixo do banner
+    document.body.style.setProperty('--adSafeTop', show ? '52px' : '0px');
+    document.body.style.setProperty('--adSafeBottom', show ? '62px' : '0px');
+
+    // mode: 'off' | 'menu' | 'gameover'
+    if(elAdTop) elAdTop.style.display = (mode==='menu' || mode==='gameover') ? 'flex' : 'none';
+    if(elAdBottom) elAdBottom.style.display = (mode==='menu' || mode==='gameover') ? 'flex' : 'none';
+    if(elSupport) elSupport.style.display = (mode==='menu' || mode==='gameover') ? 'block' : 'none';
+    if(mode!=='off') mountAds();
+  }
+
+
+  // ===== Canvas / Scale =====
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', {alpha:false});
+  const W0=360, H0=640; // base "celular"
+  canvas.width=W0; canvas.height=H0;
+
+  // ===== Safety: show error instead of black screen =====
+  let fatal = null;
+  function showFatal(err){
+    fatal = String(err && err.stack ? err.stack : err);
+    console.error(err);
+  }
+  window.addEventListener('error', (e)=>showFatal(e.error||e.message||e));
+  window.addEventListener('unhandledrejection', (e)=>showFatal(e.reason||e));
+
+  // ===== Tiny 8-bit font =====
+  const FONT = {
+    'A':["0110","1001","1111","1001","1001"],
+    'B':["1110","1001","1110","1001","1110"],
+    'C':["0111","1000","1000","1000","0111"],
+    'D':["1110","1001","1001","1001","1110"],
+    'E':["1111","1000","1110","1000","1111"],
+    'F':["1111","1000","1110","1000","1000"],
+    'G':["0111","1000","1011","1001","0111"],
+    'H':["1001","1001","1111","1001","1001"],
+    'I':["111","010","010","010","111"],
+    'J':["0011","0001","0001","1001","0110"],
+    'K':["1001","1010","1100","1010","1001"],
+    'L':["1000","1000","1000","1000","1111"],
+    'M':["10001","11011","10101","10001","10001"],
+    'N':["1001","1101","1011","1001","1001"],
+    'O':["0110","1001","1001","1001","0110"],
+    'P':["1110","1001","1110","1000","1000"],
+    'Q':["0110","1001","1001","1011","0111"],
+    'R':["1110","1001","1110","1010","1001"],
+    'S':["0111","1000","0110","0001","1110"],
+    'T':["11111","00100","00100","00100","00100"],
+    'U':["1001","1001","1001","1001","0110"],
+    'V':["1001","1001","1001","0101","0010"],
+    'W':["10001","10001","10101","11011","10001"],
+    'X':["1001","0110","0100","0110","1001"],
+    'Y':["1001","0110","0010","0010","0010"],
+    'Z':["1111","0001","0010","0100","1111"],
+    '0':["0110","1001","1001","1001","0110"],
+    '1':["010","110","010","010","111"],
+    '2':["1110","0001","0110","1000","1111"],
+    '3':["1110","0001","0110","0001","1110"],
+    '4':["1001","1001","1111","0001","0001"],
+    '5':["1111","1000","1110","0001","1110"],
+    '6':["0111","1000","1110","1001","0110"],
+    '7':["1111","0001","0010","0100","0100"],
+    '8':["0110","1001","0110","1001","0110"],
+    '9':["0110","1001","0111","0001","1110"],
+    '!':["1","1","1","0","1"],
+    '?':["1110","0001","0110","0000","0100"],
+    '.':["0","0","0","0","1"],
+    ':':["0","1","0","1","0"],
+    '-':["0","0","111","0","0"],
+    '/':["0001","0010","0100","1000","0000"],
+    ' ':[]
+  };
+
+
+  // ===== Medição e quebra de linha "pixel perfect" (não quebra palavra no meio) =====
+  function charPixelWidth(ch){
+    const bmp = FONT[ch];
+    if(!bmp || !bmp.length) return 4; // fallback compacto
+    return bmp[0].length + 1; // +1 de espaçamento
+  }
+  function textPixelWidth(str, scale){
+    const up = String(str).toUpperCase();
+    let w = 0;
+    for(const ch of up){
+      if(ch === '\n') break;
+      w += charPixelWidth(ch) * scale;
+    }
+    return w;
+  }
+  function wrapTextPixel(text, maxPx, scale){
+    // Suporta \n como quebra obrigatória e quebra por palavras respeitando largura real do pixel font
+    const clean = String(text ?? "");
+    const out = [];
+    const paragraphs = clean.split('\n');
+    for(const para of paragraphs){
+      const words = para.split(/\s+/).filter(Boolean);
+      if(words.length===0){ out.push(""); continue; }
+      let line = words[0];
+      for(let i=1;i<words.length;i++){
+        const test = line + " " + words[i];
+        if(textPixelWidth(test, scale) <= maxPx){
+          line = test;
+        }else{
+          out.push(line);
+          line = words[i];
+        }
+      }
+      out.push(line);
+    }
+    return out;
+  }
+
+
+  function sanitizeText(s){
+    s = String(s ?? "");
+    // normaliza e remove acentos
+    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){ }
+    // remove tudo que não seja letras, números, espaço, quebra de linha ou pontuação básica
+    // Permitidos: A-Z 0-9 espaço . , ! ? : ; ' " ( ) - /
+    s = s.toUpperCase();
+    s = s.replace(/[^A-Z0-9 \n\.,!\?:;\'\"\(\)\-\/]/g, "");
+    // espaçamento limpo
+    s = s.replace(/[ \t]+/g, " ");
+    s = s.replace(/\n{3,}/g, "\n\n");
+    return s;
+  }
+
+  function pText(text,x,y,scale=3,color="#f7f3e8",shadow=true){
+    text = sanitizeText(text);
+
+    const s=scale;
+    const up = String(text).toUpperCase();
+    let cx=x;
+    for(const ch of up){
+      const bmp = FONT[ch];
+      if(!bmp){
+        ctx.fillStyle=color;
+        ctx.font = `${14*s}px system-ui`;
+        ctx.fillText(ch, cx, y);
+        cx += 10*s;
+        continue;
+      }
+      const h=bmp.length;
+      const w=h?bmp[0].length:3;
+      if(shadow){
+        ctx.fillStyle="rgba(0,0,0,.35)";
+        for(let r=0;r<h;r++){
+          for(let c=0;c<w;c++){
+            if(bmp[r][c]==='1') ctx.fillRect(cx+c*s+ s, y+r*s+ s, s, s);
+          }
+        }
+      }
+      ctx.fillStyle=color;
+      for(let r=0;r<h;r++){
+        for(let c=0;c<w;c++){
+          if(bmp[r][c]==='1') ctx.fillRect(cx+c*s, y+r*s, s, s);
+        }
+      }
+      cx += (w+1)*s;
+    }
+  }
+
+  // ===== Utils =====
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const irnd=(a,b)=>Math.floor(rnd(a,b+1));
+  const choose=(arr)=>arr[(Math.random()*arr.length)|0];
+
+  // ===== Audio (safe) =====
+  let ac=null;
+  function audio(){
+    if(ac) return ac;
+    try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; }
+    return ac;
+  }
+  function tone(freq=440, ms=70, type='square', vol=0.06, when=0){
+    const A=audio(); if(!A) return;
+    try{
+      const o=A.createOscillator();
+      const g=A.createGain();
+      o.type=type; o.frequency.value=freq;
+      g.gain.value=vol;
+      o.connect(g); g.connect(A.destination);
+      const t0=A.currentTime + when;
+      o.start(t0);
+      o.stop(t0 + ms/1000);
+    }catch(_){}
+  }
+  const sfx = {
+    start(){ tone(660,60,'square',0.05); tone(880,40,'triangle',0.04,0.05); },
+    click(){ tone(1200,22,'square',0.03); },
+    coin(){ tone(980,30,'triangle',0.05); tone(1440,22,'triangle',0.03,0.03); },
+    punch(){ tone(180,40,'square',0.06); tone(420,30,'square',0.04,0.02); sfx.click(); },
+    shield(){ tone(620,45,'triangle',0.045); tone(420,55,'triangle',0.04,0.05); },
+    arpeggio(){ tone(330,50,'square',0.05); tone(440,50,'square',0.05,0.05); tone(660,70,'square',0.06,0.10); },
+    heal(){ tone(740,40,'triangle',0.05); tone(880,55,'triangle',0.05,0.05); tone(990,70,'triangle',0.04,0.12); },
+    warn(){ tone(260,50,'square',0.05); tone(220,70,'square',0.05,0.06); },
+    boss(){ tone(140,90,'sawtooth',0.04); tone(120,120,'sawtooth',0.04,0.08); },
+    win(){ tone(880,80,'square',0.06); tone(990,80,'square',0.05,0.08); tone(1320,120,'square',0.05,0.16); },
+    lose(){ tone(140,120,'square',0.05); tone(110,160,'square',0.05,0.12); },
+    enemySig(idx){
+      // assinatura sonora por vilão
+      if(idx===0){ tone(520,35,'square',0.05); tone(780,40,'square',0.04,0.05); }              // promo
+      else if(idx===1){ tone(360,30,'triangle',0.04); tone(220,40,'triangle',0.04,0.05); }      // papel
+      else if(idx===2){ tone(880,28,'square',0.04); tone(880,28,'square',0.04,0.06); }          // bip bip
+      else if(idx===3){ tone(220,35,'square',0.04); tone(260,55,'square',0.04,0.06); }          // crescendo curto
+      else if(idx===4){ tone(420,25,'sawtooth',0.04); tone(520,35,'sawtooth',0.04,0.04); }      // fogo
+      else if(idx===5){ tone(180,40,'square',0.05); tone(240,40,'square',0.05,0.05); }          // monstro
+      else { sfx.boss(); }                                                                      // poço
+    }
+  };
+
+
+  // ===== BGM 8-bit (grudenta, leve, estilo chiptune) =====
+  const bgm = (()=>{
+    let timer=null;
+    let isOn=true;
+    let seq=0;
+    let leadGain=null, bassGain=null;
+    let nextTime=0;
+
+    const tempo = 138; // bpm
+    const step = (60/tempo)/2; // 1/8 note
+    // Motivo simples e repetitivo (earworm), com variações leves
+    const lead = [
+      0, 2, 4, 7, 4, 2, 0, -3,
+      0, 2, 4, 9, 7, 4, 2, 0
+    ];
+    const lead2 = [
+      0, 2, 5, 7, 5, 2, 0, -3,
+      0, 2, 5, 10, 9, 5, 2, 0
+    ];
+    const bass = [
+      -12, -12, -10, -10, -8, -8, -10, -10,
+      -12, -12, -7, -7, -8, -8, -10, -10
+    ];
+
+    function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
+
+    function ensureGains(){
+      const A=audio(); if(!A) return false;
+      if(leadGain && bassGain) return true;
+      try{
+        leadGain = A.createGain();
+        bassGain = A.createGain();
+        leadGain.gain.value = 0.030;
+        bassGain.gain.value = 0.024;
+        leadGain.connect(A.destination);
+        bassGain.connect(A.destination);
+        return true;
+      }catch(_){ return false; }
+    }
+
+    function playNote(freq, dur, type, gainNode, when){
+      const A=audio(); if(!A) return;
+      try{
+        const o=A.createOscillator();
+        const g=A.createGain();
+        o.type=type;
+        o.frequency.value=freq;
+        // envelope rápido (sem click)
+        const t0=when;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(1.0, t0+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+        o.connect(g);
+        g.connect(gainNode);
+        o.start(t0);
+        o.stop(t0+dur+0.02);
+      }catch(_){}
+    }
+
+    function schedule(){
+      if(!isOn) return;
+      const A=audio(); if(!A) return;
+      if(!ensureGains()) return;
+
+      // schedule ahead to keep stable
+      const lookAhead = 0.20;
+      while(nextTime < A.currentTime + lookAhead){
+        const i = seq % 16;
+        const baseMidi = 72; // C5-ish
+        const motif = (Math.floor(seq/16)%2===0) ? lead : lead2;
+
+        const n = motif[i];
+        const b = bass[i];
+
+        // Lead
+        const leadFreq = midiToFreq(baseMidi + n);
+        const leadDur  = step*0.95;
+        playNote(leadFreq, leadDur, 'square', leadGain, nextTime);
+
+        // Bass (triangle, mais suave)
+        const bassFreq = midiToFreq((baseMidi-12) + b);
+        const bassDur  = step*1.8;
+        // Toca bass só nos tempos pares para dar groove
+        if(i%2===0) playNote(bassFreq, bassDur, 'triangle', bassGain, nextTime);
+
+        // Percussão simples (click) em alguns passos
+        if(i===0 || i===4 || i===8 || i===12){
+          // mini "tick" bem baixo
+          const tickFreq = midiToFreq(96);
+          playNote(tickFreq, 0.03, 'square', leadGain, nextTime);
+        }
+
+        seq++;
+        nextTime += step;
+      }
+    }
+
+    function start(){
+      const A=audio(); if(!A) return;
+      if(!isOn) return;
+      try{ A.resume(); }catch(_){}
+      if(timer) return;
+      nextTime = A.currentTime + 0.05;
+      timer = setInterval(schedule, 50);
+    }
+
+    function stop(){
+      if(timer){ clearInterval(timer); timer=null; }
+      seq=0;
+      nextTime=0;
+    }
+
+    function set(on){
+      isOn = !!on;
+      if(!isOn) stop();
+      else start();
+    }
+
+    return { start, stop, set, get on(){return isOn;} };
+  })();
+
+
+  // ===== Daily Challenge (deterministic) =====
+  const challenges = [
+    {t:"Vença 1 fase sem usar ESPECIAL.", check:(st)=>st.noSpecialThisStage},
+    {t:"Faça COMBO x2 (3 acertos) pelo menos 1 vez.", check:(st)=>st.combo2},
+    {t:"Bloqueie 1 ataque com DEFESA.", check:(st)=>st.blocked},
+    {t:"Cure com “SALÁRIO” ou “DIVIDENDOS”.", check:(st)=>st.healed},
+    {t:"Vença uma fase com HP acima de 80.", check:(st)=>st.hpHigh},
+  ];
+  function dailyPick(){
+    const d = new Date();
+    const seed = d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+    return challenges[seed % challenges.length];
+  }
+  const daily = dailyPick();
+
+  // ===== Enemies =====
+  const enemies = [
+    {name:"CHEFÃO IMEDIATISMO", subtitle:"(vilão das promoções)", color:"#b070ff", hp:80, atk:[8,14]},
+    {name:"BOLETO ATRASADO", subtitle:"(papel vingativo)", color:"#ff6b6b", hp:90, atk:[9,15]},
+    {name:"CARTÃO ESTOURADO", subtitle:"(limite gritando)", color:"#4f9dff", hp:100, atk:[10,16]},
+    {name:"JUROS DA CONTA ATRASADA", subtitle:"(cresce sozinho!)", color:"#ffb84d", hp:115, atk:[11,18]},
+    {name:"QUEIMA DINHEIRO", subtitle:"(foguinho no bolso)", color:"#ff5aa5", hp:130, atk:[12,20]},
+    {name:"A BESTA GASTADORA", subtitle:"(compra sem olhar)", color:"#6fe6a8", hp:150, atk:[13,22]},
+    {name:"O GRANDE POÇO", subtitle:"(duas barras de vida)", color:"#7b8aa3", hp:170, atk:[14,24], phase2:true},
+  ];
+
+  const player = {name:"SUPER ORÇAMENTO", subtitle:"(guardião da carteira)", hp:120, max:120, guard:false};
+
+  // ===== State =====
+  let state = 'title'; // title, battle, clear, win, lose
+  let msg = "Clique para começar!";
+  let msgTimer = 0;
+  let clearTimer = 0;
+
+  let stage = 0;
+  let enemy = null;
+  let enemyHP = 0, enemyMax = 0;
+  let enemyPhase2 = false;
+  let turn = 'player'; // player/enemy
+  let lock = false;
+
+  // 1 continue por rodada (simula anúncio recompensado — você pode trocar por AdMob/Rewarded depois)
+  let continuesLeft = 1;
+
+  // "Juice"
+  let shake = 0;
+  let coins = [];
+  let hitPops = [];
+  let sparks = []; // heal particles
+  let confetti = []; // vitória / fase
+  let flashP = 0, flashE = 0; // damage flash timers
+
+  // "Só mais uma" systems
+  let comboCount = 0;       // consecutive hits without taking damage
+  let comboTier = 0;        // 0 none, 1 x2, 2 x3
+  let specialCD = 0;        // cooldown turns for special
+  let stageStats = null;    // reset per stage for daily challenge
+
+  // Buttons
+  const buttons = [
+    {id:'atk', label:'INVESTIR', sub:'(Ataque)', x:18, y:548, w:104, h:72, col:'#2e9c5b'},
+    {id:'def', label:'POUPAR', sub:'(Defesa)', x:128, y:548, w:104, h:72, col:'#2b7cbf'},
+    {id:'spc', label:'JUROS', sub:'(Especial)', x:238, y:548, w:104, h:72, col:'#d5a33a'},
+  ];
+
+  const quips = [
+    "Você resistiu à vitrine. Adulto funcional: desbloqueado. 🏆",
+    "Parcelinhas choraram baixinho. Você não ouviu (graças a Deus). 🏆",
+    "Promoção: 0 — Você: 1. Placar bonito. 🏆",
+    "Seu eu do futuro te mandou um abraço. (E um boleto pago.) 🏆",
+    "Você foi ao shopping e saiu com dignidade. Raro. 🏆",
+  ];
+
+  function resetRun(){
+    continuesLeft = 1;
+    stage=0;
+    player.hp=player.max;
+    comboCount=0; comboTier=0; specialCD=0;
+    startStage(0);
+    state='battle';
+    msg = "Super Orçamento chegou no shopping pra salvar o mundo das gastanças.\n(Infelizmente, o mundo ama uma promoção.)";
+    msgTimer=3.0;
+  }
+
+  function startStage(i){
+    stage=i;
+    enemy = enemies[i];
+    enemyMax = enemy.hp;
+    enemyHP = enemyMax;
+    enemyPhase2 = !!enemy.phase2 ? false : null;
+    turn='player';
+    lock=false;
+    player.guard=false;
+    flashP=flashE=0;
+    stageStats = { noSpecialThisStage:true, combo2:false, blocked:false, healed:false, hpHigh:false };
+    msg = `Fase ${i+1}/7 — ${enemy.name}\n${enemy.subtitle}`;
+    msgTimer=2.2;
+  }
+
+  function enemyTotalMax(){
+    if(enemy && enemy.phase2) return enemyMax*2;
+    return enemyMax;
+  }
+  function enemyTotalHP(){
+    if(enemy && enemy.phase2){
+      if(enemyPhase2===false) return enemyHP + enemyMax;
+      else return enemyHP;
+    }
+    return enemyHP;
+  }
+
+  function updateComboTier(){
+    const prev = comboTier;
+    if(comboCount>=6) comboTier=2;
+    else if(comboCount>=3) comboTier=1;
+    else comboTier=0;
+    if(comboTier!==prev && comboTier>0){
+      stageStats.combo2 = stageStats.combo2 || (comboTier>=1);
+      // small "reward" sound
+      sfx.coin();
+      hitPops.push({x:95, y:280, t:0, txt:(comboTier===1)?"COMBO!":"MANDOU!"});
+    }
+  }
+  function comboMult(){
+    if(comboTier===2) return 1.20;
+    if(comboTier===1) return 1.10;
+    return 1.00;
+  }
+
+  function healBurst(x,y){
+    for(let i=0;i<16;i++){
+      sparks.push({x:x+rnd(-10,10), y:y+rnd(-8,8), vx:rnd(-18,18)/12, vy:rnd(-28,-10)/12, a:1, col: (Math.random()<0.5) ? "#6fe6a8" : "#f2c94c"});
+    }
+  }
+
+  function confettiBurst(){
+    // chuva de papelzinho (bem rápida, satisfatória)
+    for(let i=0;i<40;i++){
+      confetti.push({
+        x: rnd(40, W0-40),
+        y: rnd(120, 260),
+        vx: rnd(-20,20)/18,
+        vy: rnd(-60,-20)/18,
+        a: 1,
+        col: (Math.random()<0.5) ? "#f2c94c" : "#6fe6a8"
+      });
+    }
+  }
+
+  function maybeHealPlayer(){
+    if(player.hp <= player.max*0.25 && Math.random()<0.18){
+      const heal = irnd(10,18);
+      player.hp = clamp(player.hp+heal,0,player.max);
+      msg = (Math.random()<0.5) ? `💬 “Dividendos” chegaram! +${heal} HP` : `💬 “Salário” caiu! +${heal} HP`;
+      msgTimer=1.3;
+      stageStats.healed=true;
+      sfx.heal();
+      healBurst(95, 292-20);
+    }
+  }
+  function maybeHealEnemy(){
+    const totalMax = enemyTotalMax();
+    const totalHP = enemyTotalHP();
+    if(totalHP <= totalMax*0.25 && Math.random()<0.18){
+      const heal = irnd(8,16);
+      enemyHP = clamp(enemyHP+heal, 0, enemyMax);
+      msg = (Math.random()<0.5) ? `💬 Inimigo: “Mais um boleto!” (+${heal})` : `💬 Inimigo: “Mais uma compra!” (+${heal})`;
+      msgTimer=1.3;
+      sfx.warn();
+      healBurst(260, 168-24);
+    }
+  }
+
+  function doPlayer(action){
+    if(state!=='battle' || turn!=='player' || lock) return;
+
+    // cooldown
+    if(action==='spc' && specialCD>0){
+      msg = `Especial recarregando… (${specialCD} turno${specialCD>1?'s':''})`;
+      msgTimer=1.0;
+      sfx.click();
+      return;
+    }
+
+    maybeHealPlayer();
+
+    lock=true;
+
+    if(action==='atk'){
+      const base = irnd(12,18);
+      const dmg = Math.max(1, Math.floor(base*comboMult()));
+      enemyDamage(dmg, true);
+      comboCount++; updateComboTier();
+      msg = `Você lançou a “Planilha de Custos”! -${dmg} no inimigo.`;
+      sfx.punch(); sfx.coin();
+      punchAnim('player');
+      setTimeout(()=>endTurn(), 420);
+    }else if(action==='def'){
+      player.guard=true;
+      msg = "Você ativou a Reserva de Emergência!\n(Próximo dano reduzido + chance de contra-ataque.)";
+      msgTimer=1.4;
+      sfx.shield();
+      setTimeout(()=>endTurn(), 380);
+    }else{ // special
+      stageStats.noSpecialThisStage=false;
+      const base = irnd(20,28);
+      const dmg = Math.max(1, Math.floor(base*comboMult()));
+      enemyDamage(dmg, true);
+      comboCount++; updateComboTier();
+      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.`;
+      sfx.arpeggio(); sfx.coin();
+      punchAnim('player', true);
+      specialCD = 3; // 3 turns cooldown
+      setTimeout(()=>endTurn(), 520);
+    }
+  }
+
+  function enemyDamage(dmg, fromPlayer){
+    const cx = fromPlayer ? 260 : 95;
+    for(let i=0;i<18;i++){
+      coins.push({x:cx+rnd(-18,18), y:240+rnd(-14,14), vx:rnd(-20,20)/10, vy:rnd(-30,-10)/10, a:1});
+    }
+    hitPops.push({x:cx, y:210, t:0, txt: choose(["POW!","BAM!","PAF!"])});
+    shake=7;
+    if(fromPlayer){ flashE=0.12; } else { flashP=0.12; }
+
+    if(enemy && enemy.phase2){
+      if(enemyPhase2===false){
+        enemyHP -= dmg;
+        if(enemyHP<=0){
+          enemyPhase2=true;
+          enemyHP = enemyMax; // second bar
+          msg = `O GRANDE POÇO abriu a “segunda barra” 😬\n(Agora é sério.)`;
+          msgTimer=1.7;
+          sfx.boss();
+          flashE=0.25;
+        }
+      }else{
+        enemyHP = Math.max(0, enemyHP-dmg);
+      }
+    }else{
+      enemyHP = Math.max(0, enemyHP-dmg);
+    }
+  }
+
+  function doEnemy(){
+    if(state!=='battle' || turn!=='enemy') return;
+
+    maybeHealEnemy();
+
+    lock=true;
+
+    const atkNames = ["Promoção Relâmpago","Taxa de Conveniência","Boleto Surpresa","Frete Caro"];
+    const name = atkNames[irnd(0,atkNames.length-1)];
+    let dmg = irnd(enemy.atk[0], enemy.atk[1]);
+
+    // signature sound
+    sfx.enemySig(stage);
+
+    let counter = 0;
+    if(player.guard){
+      dmg = Math.max(1, Math.floor(dmg/3));
+      player.guard=false;
+      stageStats.blocked=true;
+
+      // 20% chance of counter
+      if(Math.random()<0.20){
+        counter = irnd(1,3);
+        enemyDamage(counter, false);
+        hitPops.push({x:95, y:246, t:0, txt:"CONTRA!"});
+        sfx.coin();
+      }
+      msg = `${enemy.name} usou “${name}”!\nReserva segurou: apenas -${dmg}${counter?` (e você devolveu -${counter})`:''}.`;
+    }else{
+      msg = `${enemy.name} usou “${name}”!\nSua saúde financeira caiu -${dmg}.`;
+    }
+
+    sfx.punch();
+
+    // damage player
+    if(dmg>0){
+      player.hp = Math.max(0, player.hp-dmg);
+      flashP=0.15; shake=7;
+      // taking damage breaks combo
+      comboCount=0; updateComboTier();
+    }
+
+    setTimeout(()=>endTurn(), 520);
+  }
+
+  function endTurn(){
+    lock=false;
+
+    // decrement cooldown at turn boundary (end of action)
+    if(turn==='player'){
+      // after player's action, prepare enemy
+    }else{
+      // after enemy action, player gets turn: reduce CD
+      if(specialCD>0) specialCD--;
+      // stage stat: high hp check (done near victory)
+    }
+
+    // check win/lose
+    const totalHP = enemyTotalHP();
+    if(player.hp<=0){
+      state='lose';
+      msg = "GAME OVER FINANCEIRO.\nVocê entrou no cheque especial.\n(Todo mundo já esteve lá… mas a gente sai.)";
+      msgTimer=999;
+      sfx.lose();
+      return;
+    }
+    if(totalHP<=0){
+      // daily stat check
+      stageStats.hpHigh = player.hp >= 80;
+
+      if(stage>=enemies.length-1){
+        state='win';
+        const dailyDone = daily.check(stageStats);
+        msg = "VITÓRIA DO PATRIMÔNIO!\nDisciplina 1 x 0 Parcelinhas.\n" + (dailyDone ? "DESAFIO DO DIA: CONCLUÍDO! 🏅" : "DESAFIO DO DIA: tente de novo amanhã 😄");
+        msgTimer=999;
+        sfx.win();
+        return;
+      }
+
+      // ===== Recompensa + Interlúdio (deixa gostoso e claro) =====
+      const trophy = choose(quips);
+      const dailyDone = daily.check(stageStats);
+
+      // Progressão leve e justa: +2 HP máx por fase (até 140), e cura pequena
+      player.max = Math.min(140, player.max + 2);
+      player.hp = clamp(player.hp + 10, 0, player.max);
+
+      msg = `${trophy}
+${dailyDone ? "Desafio do dia: concluído 🏅" : "Desafio do dia: ainda dá 😄"}
++2 HP MÁX / +10 HP`;
+      msgTimer = 2.4;
+
+      // efeito de vitória
+      confettiBurst();
+      sfx.heal();
+      sfx.coin();
+      healBurst(95, 260);
+
+      // entra num estado curto de "fase concluída"
+      state='clear';
+      clearTimer = 1.5;
+      const next = stage + 1;
+
+      setTimeout(()=>{
+        if(state==='clear'){
+          startStage(next);
+          state='battle';
+        }
+      }, 1200);
+
+      return;
+    }
+
+    // "quase vitória" cue
+    const ratio = totalHP / enemyTotalMax();
+    if(ratio<=0.10 && turn==='player'){ // just after player acted, hype
+      hitPops.push({x:260, y:140, t:0, txt:"TÁ NA MÃO!"});
+      sfx.coin();
+    }
+
+    // switch turns
+    if(turn==='player'){
+      turn='enemy';
+      setTimeout(()=>doEnemy(), 320);
+    }else{
+      turn='player';
+      msgTimer = Math.min(msgTimer, 1.1);
+    }
+  }
+
+  function punchAnim(who, big=false){
+    hitPops.push({x: who==='player'?260:95, y:230, t:0, txt: big? "KABOOM!" : "PAF!"});
+  }
+
+  // ===== Input =====
+  function toLocal(e){
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (W0/rect.width);
+    const y = (e.clientY - rect.top) * (H0/rect.height);
+    return {x,y};
+  }
+
+  function onPress(x,y){
+    if(fatal){ fatal=null; bgm.stop(); state='title'; return; }
+
+    if(state==='title'){
+      try{ audio()?.resume?.(); }catch(_){}
+      sfx.start();
+      bgm.start();
+      resetRun();
+      return;
+    }
+    if(state==='win' || state==='lose'){
+      // Continue (simulado): toque no canto inferior esquerdo para ganhar +15 HP e continuar (apenas 1x).
+      if(state==='lose' && continuesLeft>0 && x>=12 && x<=170 && y>=H0-86 && y<=H0-12){
+        continuesLeft--;
+        player.hp = Math.max(player.max*0.35, 15);
+        msg = "CONTINUE! Você voltou com +15 HP (modo recompensado).";
+        msgTimer = 1.6;
+        state='battle';
+        turn='player';
+        lock=false;
+        sfx.heal();
+        return;
+      }
+      sfx.click();
+      bgm.stop();
+      state='title';
+      return;
+    }
+    if(state==='battle' && turn==='player' && !lock){
+      for(const b of buttons){
+        if(x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
+          doPlayer(b.id);
+          return;
+        }
+      }
+    }
+  }
+
+  canvas.addEventListener('pointerdown', (e)=>{
+    const p = toLocal(e);
+    onPress(p.x,p.y);
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if(state==='title' && (e.key==='Enter' || e.key===' ')) { resetRun(); return; }
+    if(state==='battle' && turn==='player' && !lock){
+      if(e.key==='1') doPlayer('atk');
+      if(e.key==='2') doPlayer('def');
+      if(e.key==='3') doPlayer('spc');
+    }
+    if((state==='win'||state==='lose') && (e.key==='Enter' || e.key===' ')) { bgm.stop(); state='title'; }
+  });
+
+  // ===== Drawing =====
+  function clear(){
+    ctx.fillStyle="#0b0f14";
+    ctx.fillRect(0,0,W0,H0);
+  }
+
+  function drawWatermark(){
+    const x= W0-34, y=14;
+    ctx.globalAlpha=0.28;
+    ctx.fillStyle="#f7f3e8";
+    ctx.fillRect(x,y,18,18);
+    ctx.fillStyle="#0b0f14";
+    ctx.fillRect(x+3,y+3,12,12);
+    ctx.globalAlpha=0.75;
+    pText("B", x+5, y+5, 2, "#f7f3e8", false);
+    ctx.globalAlpha=1;
+  }
+
+  function drawShoppingBG(){
+    // simple 8-bit mall interior with store signs and floor tiles
+    const g = ctx.createLinearGradient(0,0,0,280);
+    g.addColorStop(0,"#1c2a3a");
+    g.addColorStop(1,"#2b3a4e");
+    ctx.fillStyle=g; ctx.fillRect(0,0,W0,320);
+
+    // stores (left+right)
+    for(let i=0;i<6;i++){
+      const side = (i<3)?0:1;
+      const ix = side===0 ? 12 : 240;
+      const iy = 70 + (i%3)*80;
+      ctx.fillStyle = side===0 ? "#364d66" : "#3b5170";
+      ctx.fillRect(ix, iy, 108, 62);
+
+      // sign
+      ctx.fillStyle = "#f2c94c";
+      ctx.fillRect(ix+8, iy+8, 92, 14);
+      const labels = ["OFERTA","LEVE 2","SO HOJE","DESCONTO","QUEIMA!","PROMOCAO"];
+      ctx.fillStyle="#0b0f14";
+      pText(labels[i%labels.length], ix+12, iy+12, 1, "#0b0f14", false);
+
+      // window
+      ctx.fillStyle="rgba(0,0,0,.22)";
+      ctx.fillRect(ix+10, iy+28, 88, 26);
+
+      // little items
+      ctx.fillStyle="rgba(255,255,255,.18)";
+      ctx.fillRect(ix+16, iy+34, 12, 12);
+      ctx.fillRect(ix+36, iy+38, 10, 10);
+      ctx.fillRect(ix+54, iy+34, 12, 12);
+    }
+
+    // floor
+    ctx.fillStyle="#19140f";
+    ctx.fillRect(0,320,W0,320);
+
+    for(let y=320;y<H0;y+=20){
+      for(let x=0;x<W0;x+=20){
+        ctx.fillStyle = ((x/20+y/20)&1) ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)";
+        ctx.fillRect(x,y,20,20);
+      }
+    }
+    // lane separators
+    ctx.fillStyle="rgba(255,255,255,.08)";
+    ctx.fillRect(118,320,4,320);
+    ctx.fillRect(238,320,4,320);
+  }
+
+  function drawBar(x,y,w,h,ratio,fg,bg){
+    ctx.fillStyle=bg; ctx.fillRect(x,y,w,h);
+    ctx.fillStyle=fg; ctx.fillRect(x,y,Math.floor(w*clamp(ratio,0,1)),h);
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    ctx.fillRect(x,y,w,h);
+  }
+
+  function spriteHero(x,y){
+    // 8-bit hero
+    if(flashP>0){ ctx.fillStyle="rgba(255,80,80,.35)"; ctx.fillRect(x-30,y-70,60,90); }
+    // body
+    ctx.fillStyle="#2e9c5b"; ctx.fillRect(x-14,y-34,28,34);
+    // cape
+    ctx.fillStyle="#1f6b40"; ctx.fillRect(x-20,y-32,6,34);
+    // head
+    ctx.fillStyle="#f1c7a4"; ctx.fillRect(x-12,y-52,24,18);
+    // mask
+    ctx.fillStyle="#0b0f14"; ctx.fillRect(x-12,y-46,24,6);
+    ctx.fillStyle="#f7f3e8"; ctx.fillRect(x-8,y-44,6,4);
+    ctx.fillRect(x+2,y-44,6,4);
+    // belt
+    ctx.fillStyle="#f2c94c"; ctx.fillRect(x-14,y-16,28,4);
+    // boots
+    ctx.fillStyle="#0b0f14"; ctx.fillRect(x-14,y-6,12,6); ctx.fillRect(x+2,y-6,12,6);
+    // shield indicator if guarding
+    if(player.guard){
+      ctx.fillStyle="rgba(111,230,168,.20)";
+      ctx.fillRect(x-22,y-58,44,60);
+      ctx.fillStyle="rgba(111,230,168,.45)";
+      ctx.fillRect(x-22,y-58,44,6);
+    }
+  }
+
+  function spriteEnemy(x,y){
+    if(flashE>0){ ctx.fillStyle="rgba(255,80,80,.32)"; ctx.fillRect(x-40,y-72,80,92); }
+    const c = enemy ? enemy.color : "#b070ff";
+    // blob
+    ctx.fillStyle=c; ctx.fillRect(x-22,y-46,44,46);
+    ctx.fillRect(x-28,y-30,56,30);
+    // eyes
+    ctx.fillStyle="#f7f3e8"; ctx.fillRect(x-12,y-40,10,8); ctx.fillRect(x+2,y-40,10,8);
+    ctx.fillStyle="#0b0f14"; ctx.fillRect(x-8,y-38,4,4); ctx.fillRect(x+6,y-38,4,4);
+    // mouth
+    ctx.fillStyle="rgba(0,0,0,.45)"; ctx.fillRect(x-8,y-24,16,4);
+
+    // credit cards stuck
+    ctx.fillStyle="#4f9dff"; ctx.fillRect(x-30,y-18,18,10);
+    ctx.fillStyle="#ff6b6b"; ctx.fillRect(x+12,y-14,18,10);
+    // boleto paper
+    ctx.fillStyle="#f7f3e8"; ctx.fillRect(x-8,y-10,18,12);
+    ctx.fillStyle="rgba(0,0,0,.45)"; for(let i=0;i<6;i++) ctx.fillRect(x-6+i*3,y-6,2,6);
+
+    if(enemy && enemy.phase2 && enemyPhase2===true){
+      ctx.fillStyle="rgba(0,0,0,.25)";
+      ctx.fillRect(x-36,y-56,72,6);
+    }
+  }
+
+  function drawTextbox(){
+    // bottom dialog
+    ctx.fillStyle="#121a24"; ctx.fillRect(12,404,336,140);
+    ctx.fillStyle="rgba(255,255,255,.06)"; ctx.fillRect(12,404,336,140);
+    ctx.strokeStyle="rgba(0,0,0,.45)"; ctx.lineWidth=4; ctx.strokeRect(12,404,336,140);
+
+    // message (quebra inteligente por largura, sem quebrar palavra)
+    const wrapped = wrapTextPixel(String(msg||""), 312, 2);
+    let lines = wrapped.slice(0,5);
+    // se passar do limite, indica continuação
+    if(wrapped.length > 5){
+      const last = lines[4];
+      lines[4] = (last.length > 3) ? (last.slice(0, Math.max(0,last.length-3)) + "...") : "...";
+    }
+    let yy=418;
+    for(const ln of lines){
+      pText(ln, 22, yy, 2, "#f7f3e8", true);
+      yy += 16;
+    }
+
+    if(state==='battle' || state==='clear'){
+      const hint = (turn==='player') ? "SEU TURNO: 1/2/3" : "TURNO DO VILÃO...";
+      pText(hint, 22, 512, 1, (turn==='player')?"#6fe6a8":"#ffb84d", true);
+    }
+  }
+
+  function drawButtons(){
+    for(const b of buttons){
+      let enabled = (state==='battle' && turn==='player' && !lock);
+      if(b.id==='spc' && specialCD>0) enabled=false;
+
+      ctx.globalAlpha = enabled ? 1 : 0.55;
+      ctx.fillStyle=b.col; ctx.fillRect(b.x,b.y,b.w,b.h);
+      ctx.fillStyle="rgba(0,0,0,.25)"; ctx.fillRect(b.x,b.y,b.w,b.h);
+      ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.lineWidth=3; ctx.strokeRect(b.x,b.y,b.w,b.h);
+
+      pText(b.label, b.x+10, b.y+14, 2, "#0b0f14", false);
+
+      if(b.id==='spc'){
+        const sub = (specialCD>0) ? `(REC ${specialCD})` : b.sub;
+        pText(sub, b.x+10, b.y+36, 2, "rgba(0,0,0,.72)", false);
+      }else{
+        pText(b.sub, b.x+10, b.y+36, 2, "rgba(0,0,0,.72)", false);
+      }
+      ctx.globalAlpha=1;
+    }
+    pText("TOQUE NOS BOTÕES", 88, 626, 2, "rgba(247,243,232,.55)", true);
+  }
+
+  function drawHP(){
+    // enemy (top)
+    const totalMax = enemyTotalMax();
+    const totalHP = enemyTotalHP();
+    pText(enemy?enemy.name:"", 18, 22, 2, "#f7f3e8", true);
+    pText(`FASE ${stage+1}/7`, 246, 22, 2, "rgba(247,243,232,.75)", true);
+
+    // "perto do fim": muda cor levemente
+    const ratio = totalHP/totalMax;
+    const eCol = (ratio<=0.30) ? "#ff4d6d" : "#ff6b6b";
+    drawBar(18, 48, 320, 14, ratio, eCol, "rgba(0,0,0,.35)");
+
+    if(enemy && enemy.phase2){
+      pText(enemyPhase2===false ? "BARRA 1/2" : "BARRA 2/2", 250, 66, 2, "rgba(247,243,232,.7)", true);
+    }
+
+    // player (bottom)
+    pText(player.name, 18, 320, 2, "#f7f3e8", true);
+    drawBar(18, 346, 320, 14, player.hp/player.max, "#6fe6a8", "rgba(0,0,0,.35)");
+    pText(`HP ${player.hp}/${player.max}`, 18, 366, 2, "rgba(247,243,232,.75)", true);
+
+    // combo indicator
+    if(comboTier>0){
+      const lab = (comboTier===2) ? "COMBO X3" : "COMBO X2";
+      pText(lab, 232, 366, 2, "#f2c94c", true);
+    }else{
+      // show micro-goal if close
+      if(comboCount===2) pText("FALTA 1 P/ COMBO!", 188, 366, 2, "rgba(242,201,76,.7)", true);
+      if(comboCount===5) pText("FALTA 1 P/ X3!", 210, 366, 2, "rgba(242,201,76,.7)", true);
+    }
+  }
+
+  function updateFx(dt){
+    if(shake>0) shake = Math.max(0, shake - dt*18);
+    if(flashP>0) flashP = Math.max(0, flashP - dt);
+    if(flashE>0) flashE = Math.max(0, flashE - dt);
+
+    // coins
+    for(let i=coins.length-1;i>=0;i--){
+      const c=coins[i];
+      c.x += c.vx; c.y += c.vy;
+      c.vy += 0.18;
+      c.a -= 0.02;
+      if(c.y>H0+20 || c.a<=0) coins.splice(i,1);
+    }
+    // hit pops
+    for(let i=hitPops.length-1;i>=0;i--){
+      const h=hitPops[i];
+      h.t += dt;
+      if(h.t>0.7) hitPops.splice(i,1);
+    }
+    // sparks
+    for(let i=sparks.length-1;i>=0;i--){
+      const s=sparks[i];
+      s.x += s.vx; s.y += s.vy;
+      s.vy += 0.14;
+      s.a -= 0.03;
+      if(s.y>H0+20 || s.a<=0) sparks.splice(i,1);
+    }
+  }
+
+    // confetti
+    for(let i=confetti.length-1;i>=0;i--){
+      const c=confetti[i];
+      c.x += c.vx; c.y += c.vy;
+      c.vy += 0.12;
+      c.a -= 0.02;
+      if(c.y>H0+30 || c.a<=0) confetti.splice(i,1);
+    }
+
+  function drawFx(){
+    // coins
+    for(const c of coins){
+      ctx.globalAlpha = Math.max(0,c.a);
+      ctx.fillStyle="#f2c94c";
+      ctx.fillRect(c.x-3,c.y-3,6,6);
+      ctx.fillStyle="rgba(0,0,0,.35)";
+      ctx.fillRect(c.x-1,c.y-3,2,6);
+      ctx.globalAlpha=1;
+    }
+    // sparks (heal)
+    for(const s of sparks){
+      ctx.globalAlpha = Math.max(0,s.a);
+      ctx.fillStyle = s.col;
+      ctx.fillRect(s.x-2,s.y-2,4,4);
+      ctx.globalAlpha=1;
+    }
+    // confetti (fase concluída)
+    for(const c of confetti){
+      ctx.globalAlpha = Math.max(0,c.a);
+      ctx.fillStyle = c.col;
+      ctx.fillRect(c.x-2, c.y-2, 4, 4);
+      ctx.globalAlpha=1;
+    }
+    // pow bubbles
+    for(const h of hitPops){
+      const a = 1 - h.t/0.7;
+      const yy = h.y - h.t*46;
+      ctx.globalAlpha=a;
+      ctx.fillStyle="#f7f3e8";
+      ctx.fillRect(h.x-30, yy-14, 60, 22);
+      pText(h.txt, h.x-24, yy-8, 2, "#0b0f14", false);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  function drawTitle(){
+    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(18,110,324,250);
+    ctx.fillStyle="rgba(255,255,255,.06)";
+    ctx.fillRect(18,110,324,250);
+
+    pText("CARTEIRA", 78, 140, 5, "#f7f3e8", true);
+    pText("BASE", 128, 190, 6, "#6fe6a8", true);
+    pText("BATALHA 8-BIT", 66, 250, 3, "#f2c94c", true);
+    pText("CLIQUE PARA JOGAR", 64, 308, 2, "#f7f3e8", true);
+
+    // daily challenge (short)
+    pText("DESAFIO DO DIA:", 22, 382, 3, "#ffb84d", true);
+    const line1 = daily.t.length>24 ? daily.t.slice(0,24) : daily.t;
+    const line2 = daily.t.length>24 ? daily.t.slice(24) : "";
+    pText(line1, 22, 412, 2, "#f7f3e8", true);
+    if(line2) pText(line2, 22, 432, 2, "#f7f3e8", true);
+
+    pText("DICA: 1=ATAQUE  2=DEFESA  3=ESPECIAL", 22, 462, 2, "rgba(247,243,232,.85)", true);
+  }
+
+  function tick(ts){
+    try{
+      if(fatal){
+        clear();
+        drawShoppingBG();
+        pText("ERRO!", 140, 210, 5, "#ff6b6b", true);
+        pText("CLIQUE PARA VOLTAR", 70, 280, 3, "#f7f3e8", true);
+        ctx.fillStyle="rgba(0,0,0,.55)";
+        ctx.fillRect(16, 330, 328, 120);
+        ctx.fillStyle="#f7f3e8";
+        ctx.font="12px monospace";
+        ctx.fillText(fatal.slice(0,240), 22, 354);
+        drawWatermark();
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      const now = ts||0;
+      const dt = clamp((now-(tick._t||now))/1000, 0, 0.05);
+      tick._t = now;
+
+      if(msgTimer>0) msgTimer -= dt;
+      if(clearTimer>0) clearTimer -= dt;
+      updateFx(dt);
+
+      clear();
+      drawShoppingBG();
+
+      let ox=0, oy=0;
+      if(shake>0){ ox = (Math.random()*2-1)*shake; oy = (Math.random()*2-1)*shake; }
+
+      ctx.save();
+      ctx.translate(ox,oy);
+
+      if(state==='title'){
+        setMonetizationUI('menu');
+        drawTitle();
+        drawWatermark();
+        ctx.restore();
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      if(state==='battle' || state==='clear'){
+        setMonetizationUI('off');
+        drawHP();
+        spriteEnemy(260, 168);
+        spriteHero(95, 292);
+
+        drawFx();
+        ctx.restore();
+
+        drawTextbox();
+        drawButtons();
+        drawWatermark();
+       }else if(state==='win' || state==='lose'){
+        setMonetizationUI('gameover');
+        ctx.fillStyle="rgba(0,0,0,.55)";
+        ctx.fillRect(18,180,324,220);
+        pText(state==='win'?"VITÓRIA!":"DERROTA!", 92, 210, 6, state==='win'?"#6fe6a8":"#ff6b6b", true);
+        pText("CLIQUE PARA RECOMEÇAR", 46, 290, 3, "#f7f3e8", true);
+
+        ctx.restore();
+        drawTextbox();
+        drawWatermark();
+      }else{
+        // fallback seguro (não deveria acontecer)
+        drawTitle();
+        drawWatermark();
+        ctx.restore();
+      }
+
+      requestAnimationFrame(tick);
+    }catch(err){
+      showFatal(err);
+      requestAnimationFrame(tick);
+    }
+  }
+
+  // ===== Kickoff =====
+  requestAnimationFrame(tick);
+
+})();
+</script>
+  <div id="adBottom" class="ad-slot" aria-label="Anúncio rodapé">
+    <div class="ad-placeholder">Espaço de anúncio (Rodapé)</div>
+  </div>
+
+  <!-- Apoio / PIX (troque o link abaixo pelo seu Linktree/WhatsApp/PIX) -->
+  <a id="supportBtn" class="support-btn" href="#" target="_blank" rel="noopener">APOIAR (PIX)</a>
+
+</body>
+</html>

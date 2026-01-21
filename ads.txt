@@ -1,0 +1,2 @@
+# Coloque aqui sua linha do ads.txt quando usar AdSense.
+# Exemplo: google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
