@@ -153,21 +153,60 @@ body{}
 (()=>{
   'use strict';
 
-  // ===== VIP_GATE (PAGUE E LIBERE) =====
+  
+
+  // ===== Barks (falas) seguras =====
+  const __G = (typeof globalThis !== 'undefined') ? globalThis : window;
+  const __BARKS_DEFAULTS = {
+    playerAtk: [
+      'Soco do Orçamento!',
+      'Cortei gasto inútil!',
+      'Aporte certeiro!',
+      'Cartão? Só no débito!',
+      'Eu controlo o boleto!'
+    ],
+    playerHurt: [
+      'Ai! Foi parcelado...',
+      'Minha fatura!',
+      'Juro compostoooo...',
+      'Dor de cashback falso!',
+      'Orçamento furou!'
+    ],
+    enemyAtk: [
+      'Compre agora!',
+      'Últimas unidades!',
+      'Frete grátis te pega!',
+      'Parcela sem ver!',
+      'Só hoje!!!'
+    ],
+    enemyHurt: [
+      'Desconto falhou!',
+      'Sem limite!',
+      'Promoção cancelada!',
+      'Carrinho abandonado!',
+      'Cupom expirou!'
+    ]
+  };
+  function getBarks(varName, fallback){
+    const v = __G[varName];
+    return (Array.isArray(v) && v.length) ? v : fallback;
+  }
+
+// ===== VIP_GATE (PAGUE E LIBERE) =====
   const VIP_PAY_URL = 'https://mpago.la/2a8Drnz';
   const VIP_ACCESS_CODES = [
-  "CB490-EUFYC7BG",
-  "CB490-YEUD6CBR",
-  "CB490-K35WXYBN",
-  "CB490-Y4DJGZ7X",
-  "CB490-KBB67JWE",
-  "CB490-4ZE855K7",
-  "CB490-NLYWCX8W",
-  "CB490-RFVEA3C4",
-  "CB490-2UVB6LWB",
-  "CB490-JR3W4XQF",
-]; // troque pelo seu codigo
-  const VIP_STORAGE_KEY = 'cb_vip_ok_v1';
+    'CB490-RNPENRCL',
+    'CB490-QUW7THXV',
+    'CB490-ESC57EV3',
+    'CB490-5HNWJEWU',
+    'CB490-HP5VWCZJ',
+    'CB490-9HLNN4FW',
+    'CB490-MJC4E5B9',
+    'CB490-L76G2ZCG',
+    'CB490-RKCSC8KQ',
+    'CB490-LS68SR2S',
+  ]; // troque pelo seu codigo
+  const VIP_STORAGE_KEY = 'cb_vip_v3';
   function vipHasAccess(){ try{ return !!localStorage.getItem(VIP_STORAGE_KEY); }catch(e){ return false; } }
   function vipGrant(val){ try{ localStorage.setItem(VIP_STORAGE_KEY, String(val||'1')); }catch(e){} }
   function vipNormalize(s){ return String(s||'').trim().toUpperCase().replace(/[^A-Z0-9\-]/g,''); }
@@ -203,7 +242,7 @@ body{}
       if(entered && codes.includes(entered)){
         vipGrant(entered);
         if(vipErr){
-          vipErr.textContent = 'PARABENS PELO INVESTIMENTO!';
+          vipErr.textContent = 'Parabéns pelo investimento!';
           vipErr.style.display = 'block';
           vipErr.style.color = '#7CFF9B';
         }
@@ -800,7 +839,7 @@ body{}
       const dmg = Math.max(1, Math.floor(base*comboMult()));
       enemyDamage(dmg, true);
       comboCount++; updateComboTier();
-      msg = `Você lançou a “Planilha de Custos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_ATK_BARKS)}\n${enemy.name}: ${pick(ENEMY_HURT_BARKS)}`;
+      msg = `Você lançou a “Planilha de Custos”! -${dmg} no inimigo.\nVocê: ${pick(getBarks('PLAYER_ATK_BARKS', __BARKS_DEFAULTS.playerAtk))}\n${enemy.name}: ${pick(getBarks('ENEMY_HURT_BARKS', __BARKS_DEFAULTS.enemyHurt))}`;
       sfx.punch(); sfx.coin();
       punchAnim('player');
       setTimeout(()=>endTurn(), 420);
@@ -816,7 +855,7 @@ body{}
       const dmg = Math.max(1, Math.floor(base*comboMult()));
       enemyDamage(dmg, true);
       comboCount++; updateComboTier();
-      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_SPC_BARKS)}\n${enemy.name}: ${pick(ENEMY_HURT_BARKS)}`;
+      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_SPC_BARKS)}\n${enemy.name}: ${pick(getBarks('ENEMY_HURT_BARKS', __BARKS_DEFAULTS.enemyHurt))}`;
       sfx.arpeggio(); sfx.coin();
       punchAnim('player', true);
       specialCD = 3; // 3 turns cooldown
@@ -953,7 +992,7 @@ const ENEMY_HURT_BARKS = [
         hitPops.push({x:95, y:246, t:0, txt:"CONTRA!"});
         sfx.coin();
       }
-      msg = `${enemy.name} usou “${name}”!\n${enemy.name}: ${pick(ENEMY_ATK_BARKS)}\nVocê: ${pick(PLAYER_HURT_BARKS)}\nReserva segurou: apenas -${dmg}${counter?` e você devolveu -${counter}`:''}.`;
+      msg = `${enemy.name} usou “${name}”!\n${enemy.name}: ${pick(getBarks('ENEMY_ATK_BARKS', __BARKS_DEFAULTS.enemyAtk))}\nVocê: ${pick(getBarks('PLAYER_HURT_BARKS', __BARKS_DEFAULTS.playerHurt))}\nReserva segurou: apenas -${dmg}${counter?` e você devolveu -${counter}`:''}.`;
     }else{
       msg = `${enemy.name} usou “${name}”!\nSua saúde financeira caiu -${dmg}.`;
     }
