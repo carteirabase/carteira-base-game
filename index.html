@@ -162,7 +162,18 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
 
   // ===== VIP_GATE (PAGUE E LIBERE) =====
   const VIP_PAY_URL = 'https://mpago.la/2a8Drnz';
-  const VIP_ACCESS_CODE = 'COLOQUE_SEU_CODIGO_AQUI'; // troque pelo seu codigo
+  const VIP_ACCESS_CODES = [
+  "CB490-EUFYC7BG",
+  "CB490-YEUD6CBR",
+  "CB490-K35WXYBN",
+  "CB490-Y4DJGZ7X",
+  "CB490-KBB67JWE",
+  "CB490-4ZE855K7",
+  "CB490-NLYWCX8W",
+  "CB490-RFVEA3C4",
+  "CB490-2UVB6LWB",
+  "CB490-JR3W4XQF",
+]; // troque pelo seu codigo
   const VIP_STORAGE_KEY = 'cb_vip_ok_v1';
   function vipHasAccess(){ return localStorage.getItem(VIP_STORAGE_KEY)==='1'; }
   function vipGrant(){ localStorage.setItem(VIP_STORAGE_KEY,'1'); }
@@ -181,14 +192,29 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
     if(code){ code.value=''; setTimeout(()=>code.focus(), 50); }
     const doUnlock=()=>{
       const entered = vipNormalize(code?code.value:'');
-      const target = vipNormalize(VIP_ACCESS_CODE);
-      if(!target || target==='COLOQUESEUCODIGOAQUI'){ if(msg) msg.textContent='ERRO: CODIGO NAO CONFIGURADO.'; return; }
-      if(entered && entered===target){
-        vipGrant();
-        if(msg) msg.textContent='LIBERADO! BOM JOGO.';
-        setTimeout(()=>{ gate.style.display='none'; }, 350);
+      const codes = (Array.isArray(VIP_ACCESS_CODES) ? VIP_ACCESS_CODES : [])
+        .map(vipNormalize)
+        .filter(Boolean);
+
+      const demo = vipNormalize('CB490-DEMO-1234');
+      const onlyDemo = (codes.length === 0) || (codes.length === 1 && codes[0] === demo);
+      if(onlyDemo){
+        if(vipErr){
+          vipErr.textContent = 'ERRO: CODIGO NAO CONFIGURADO. Edite o arquivo index.html e troque o(s) codigo(s) em VIP_ACCESS_CODES.';
+          vipErr.style.display = 'block';
+        }
+        return;
+      }
+
+      if(entered && codes.includes(entered)){
+        try{ localStorage.setItem(VIP_STORAGE_KEY, entered); }catch(e){}
+        if(vipOverlay){ vipOverlay.remove(); }
+        startGame();
       }else{
-        if(msg) msg.textContent='CODIGO INVALIDO. TENTE DE NOVO OU PAGUE NO LINK.';
+        if(vipErr){
+          vipErr.textContent = 'Codigo invalido. Confira e tente novamente.';
+          vipErr.style.display = 'block';
+        }
       }
     };
     if(unlock) unlock.onclick = doUnlock;
@@ -359,17 +385,23 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
 
   function sanitizeText(s){
     s = String(s ?? "");
-    // normaliza e remove acentos
-    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){ }
-    // remove tudo que não seja letras, números, espaço, quebra de linha ou pontuação básica
-    // Permitidos: A-Z 0-9 espaço . , ! ? : ; ' " ( ) - /
+    // normaliza e remove acentos (fica "limpo")
+    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){}
+
     s = s.toUpperCase();
-    s = s.replace(/[^A-Z0-9 \n\.,!\?:;\'\"\(\)\-\/]/g, "");
-    // espaçamento limpo
+
+    // remove parenteses (pedido)
+    s = s.replace(/[()]/g, "");
+
+    // mantem so: A-Z 0-9 espaco, quebra de linha e pontuacao basica
+    // Permitidos: . , ! ? : ; ' " - /
+    s = s.replace(/[^A-Z0-9 \n\.,!\?:;\'\"\-\/]/g, "");
+
+    // espaco limpo
     s = s.replace(/[ \t]+/g, " ");
     s = s.replace(/\n{3,}/g, "\n\n");
     return s;
-  }
+}
 
   function pText(text,x,y,scale=3,color="#f7f3e8",shadow=true){
     text = sanitizeText(text);
@@ -772,13 +804,13 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
       const dmg = Math.max(1, Math.floor(base*comboMult()));
       enemyDamage(dmg, true);
       comboCount++; updateComboTier();
-      msg = `Você lançou a “Planilha de Custos”! -${dmg} no inimigo.`;
+      msg = `Você lançou a “Planilha de Custos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_ATK_BARKS)}\n${enemy.name}: ${pick(ENEMY_HURT_BARKS)}`;
       sfx.punch(); sfx.coin();
       punchAnim('player');
       setTimeout(()=>endTurn(), 420);
     }else if(action==='def'){
       player.guard=true;
-      msg = "Você ativou a Reserva de Emergência!\n(Próximo dano reduzido + chance de contra-ataque.)";
+      msg = `Você ativou a Reserva de Emergência!\nVocê: ${pick(PLAYER_DEF_BARKS)}`;
       msgTimer=1.4;
       sfx.shield();
       setTimeout(()=>endTurn(), 380);
@@ -788,7 +820,7 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
       const dmg = Math.max(1, Math.floor(base*comboMult()));
       enemyDamage(dmg, true);
       comboCount++; updateComboTier();
-      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.`;
+      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_SPC_BARKS)}\n${enemy.name}: ${pick(ENEMY_HURT_BARKS)}`;
       sfx.arpeggio(); sfx.coin();
       punchAnim('player', true);
       specialCD = 3; // 3 turns cooldown
@@ -832,6 +864,80 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
     lock=true;
 
     const atkNames = ["Promoção Relâmpago","Taxa de Conveniência","Boleto Surpresa","Frete Caro"];
+    
+// ===== Falas extras (finanças) =====
+function pick(arr){ return arr[(Math.random()*arr.length)|0]; }
+
+const PLAYER_ATK_BARKS = [
+  "Hoje eu invisto em mim, não no impulso!",
+  "Parcelinha aqui só no treino, hein!",
+  "Cartão sem limite é cilada!",
+  "Juros compostos do bem: disciplina!",
+  "Pix não é renda fixa, bora trabalhar!",
+  "Promoção não é salário, vamo focar!",
+  "Gasto à toa? Aqui não!",
+  "Meta é patrimônio, não ostentação!",
+  "Desconto que dói é o do futuro.",
+  "Poupar é um superpoder silencioso."
+];
+
+const PLAYER_DEF_BARKS = [
+  "Hoje eu digo não pro 'só mais um'.",
+  "Defesa ativada: orçamento fechado!",
+  "Meu limite é o meu plano.",
+  "Respiro, penso e não compro.",
+  "Compra por emoção? Hoje não!",
+  "Fundo de emergência é escudo.",
+  "Blindando a mente contra o consumismo!",
+  "Cheque especial? Nem te conheço."
+];
+
+const PLAYER_SPC_BARKS = [
+  "Corta o supérfluo e acelera o futuro!",
+  "Disciplina máxima: modo patrimônio!",
+  "Ataque especial: planejamento!",
+  "Golpe final: parar de parcelar!",
+  "O inimigo é o hábito, não o dinheiro!",
+  "Renda extra ativada: foco e ação!",
+  "Vamo de longo prazo!",
+  "Juros? Só a meu favor."
+];
+
+const PLAYER_HURT_BARKS = [
+  "Ai! Foi taxa escondida!",
+  "Essa doeu no bolso!",
+  "Caiu a fatura… respira.",
+  "Golpe baixo: imprevisto!",
+  "Essa parcela mordeu!",
+  "Dói, mas aprendo e ajusto.",
+  "Ok… foi um gasto que escapou.",
+  "Isso é o preço do 'só hoje'."
+];
+
+const ENEMY_ATK_BARKS = [
+  "Só hoje… amanhã você compensa!",
+  "Parcelinha de leve, ninguém vê!",
+  "Compra por impulso é felicidade!",
+  "Cashback te salva, confia!",
+  "É baratinho… leva logo!",
+  "Você merece… mesmo sem precisar!",
+  "Depois você pensa no orçamento!",
+  "Crédito é dinheiro grátis, vai!",
+  "Última chance! Promoção acaba já!",
+  "Pega emprestado e resolve."
+];
+
+const ENEMY_HURT_BARKS = [
+  "Ei! Isso atrapalha meu consumismo!",
+  "Como assim você pensou antes?",
+  "Não! Cadê a ansiedade?!",
+  "Para de ser responsável!",
+  "Isso é trapaça: planejamento!",
+  "Meu poder era o impulso…",
+  "Você tá ficando rico (de calma)!",
+  "Ok… essa disciplina machuca."
+];
+
     const name = atkNames[irnd(0,atkNames.length-1)];
     let dmg = irnd(enemy.atk[0], enemy.atk[1]);
 
@@ -851,7 +957,7 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
         hitPops.push({x:95, y:246, t:0, txt:"CONTRA!"});
         sfx.coin();
       }
-      msg = `${enemy.name} usou “${name}”!\nReserva segurou: apenas -${dmg}${counter?` (e você devolveu -${counter})`:''}.`;
+      msg = `${enemy.name} usou “${name}”!\n${enemy.name}: ${pick(ENEMY_ATK_BARKS)}\nVocê: ${pick(PLAYER_HURT_BARKS)}\nReserva segurou: apenas -${dmg}${counter?` e você devolveu -${counter}`:''}.`;
     }else{
       msg = `${enemy.name} usou “${name}”!\nSua saúde financeira caiu -${dmg}.`;
     }
@@ -885,7 +991,7 @@ body{padding-top:var(--adSafeTop,0px);padding-bottom:var(--adSafeBottom,0px);}
     const totalHP = enemyTotalHP();
     if(player.hp<=0){
       state='lose';
-      msg = "GAME OVER FINANCEIRO.\nVocê entrou no cheque especial.\n(Todo mundo já esteve lá… mas a gente sai.)";
+      msg = "GAME OVER FINANCEIRO.\nVocê entrou no cheque especial.\nTodo mundo já esteve lá… mas a gente sai.";
       msgTimer=999;
       sfx.lose();
       return;
