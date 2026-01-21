@@ -845,7 +845,7 @@ body{}
       setTimeout(()=>endTurn(), 420);
     }else if(action==='def'){
       player.guard=true;
-      msg = `Você ativou a Reserva de Emergência!\nVocê: ${pick(PLAYER_DEF_BARKS)}`;
+      msg = `Você ativou a Reserva de Emergência!\nVocê: ${pick(getBarks('PLAYER_DEF_BARKS', __BARKS_DEFAULTS.playerDef))}`;
       msgTimer=1.4;
       sfx.shield();
       setTimeout(()=>endTurn(), 380);
@@ -855,7 +855,7 @@ body{}
       const dmg = Math.max(1, Math.floor(base*comboMult()));
       enemyDamage(dmg, true);
       comboCount++; updateComboTier();
-      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.\nVocê: ${pick(PLAYER_SPC_BARKS)}\n${enemy.name}: ${pick(getBarks('ENEMY_HURT_BARKS', __BARKS_DEFAULTS.enemyHurt))}`;
+      msg = `CRÍTICO! “Juros Compostos”! -${dmg} no inimigo.\nVocê: ${pick(getBarks('PLAYER_SPC_BARKS', __BARKS_DEFAULTS.playerSpc))}\n${enemy.name}: ${pick(getBarks('ENEMY_HURT_BARKS', __BARKS_DEFAULTS.enemyHurt))}`;
       sfx.arpeggio(); sfx.coin();
       punchAnim('player', true);
       specialCD = 3; // 3 turns cooldown
