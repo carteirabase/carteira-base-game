@@ -157,8 +157,8 @@ body{}
   "CB490-JR3W4XQF",
 ]; // troque pelo seu codigo
   const VIP_STORAGE_KEY = 'cb_vip_ok_v1';
-  function vipHasAccess(){ return localStorage.getItem(VIP_STORAGE_KEY)==='1'; }
-  function vipGrant(){ localStorage.setItem(VIP_STORAGE_KEY,'1'); }
+  function vipHasAccess(){ try{ return !!localStorage.getItem(VIP_STORAGE_KEY); }catch(e){ return false; } }
+  function vipGrant(val){ try{ localStorage.setItem(VIP_STORAGE_KEY, String(val||'1')); }catch(e){} }
   function vipNormalize(s){ return String(s||'').trim().toUpperCase().replace(/[^A-Z0-9\-]/g,''); }
   function vipShow(){
     const gate=document.getElementById('vipGate');
@@ -190,8 +190,8 @@ body{}
       }
 
       if(entered && codes.includes(entered)){
-        try{ localStorage.setItem(VIP_STORAGE_KEY, entered); }catch(e){}
-        if(vipOverlay){ vipOverlay.remove(); }
+        vipGrant(entered);
+        gate.style.display='none';
         try{ audio()?.resume?.(); }catch(_){ }
         sfx.start();
         bgm.start();
